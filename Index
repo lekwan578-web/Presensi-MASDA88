@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ABSENSI DIGITAL</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTML5-QRCode Library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        #reader video {
+            object-fit: cover !important;
+            border-radius: 1rem;
+            width: 100% !important;
+        }
+        #reader { border: none !important; }
+        #reader__scan_region {
+            background: #0f172a;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        #reader__dashboard { display: none !important; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between antialiased selection:bg-indigo-500 selection:text-white pb-24">
+
+    <!-- Top App Bar -->
+    <header class="bg-[#0A2540] text-white sticky top-0 z-30 shadow-md">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <button onclick="openSettingsModal()" class="text-white hover:text-slate-200">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="qr-code" class="w-5 h-5 text-indigo-300"></i>
+                    <h1 class="font-extrabold text-base tracking-wide uppercase">PRESENSI DIGITAL MASDA88</h1>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-full bg-white p-0.5 flex items-center justify-center overflow-hidden border border-indigo-200 shadow-sm shrink-0">
+                 <img src="https://lh3.googleusercontent.com/d/1n-Gqan2lrfOVgJJy1MWAcaK0b3uBO2oi" alt="Logo Sekolah" class="w-full h-full object-contain">
+                </div>
+                
+                <!-- Profile Avatar (D = Demo, L = Live) -->
+                <div id="mode-avatar" class="w-8 h-8 rounded-full text-white font-black text-sm flex items-center justify-center border-2 border-white shadow-sm cursor-pointer transition-all active:scale-95" onclick="toggleDemoMode()" title="Klik untuk mengubah Mode Demo / Live API">
+                    D
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto w-full px-4 pt-4 space-y-5">
+
+        <!-- Banner Feedback -->
+        <div id="feedback-alert" class="hidden rounded-2xl p-4 border transition-all duration-300 shadow-md">
+            <div class="flex items-start gap-3">
+                <div id="feedback-icon-bg" class="p-2 rounded-xl shrink-0">
+                    <i id="feedback-icon" class="w-5 h-5"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <h3 id="feedback-title" class="font-bold text-sm"></h3>
+                        <span id="feedback-time" class="text-[10px] opacity-75 font-mono"></span>
+                    </div>
+                    <p id="feedback-message" class="text-xs mt-0.5 leading-relaxed"></p>
+                    <div id="feedback-details" class="mt-2 pt-2 border-t border-black/10 flex flex-wrap gap-2 text-[11px] font-semibold">
+                        <span id="detail-id">NIS: -</span>
+                        <span id="detail-nama">Nama: -</span>
+                        <span id="detail-kelas">Kelas: -</span>
+                    </div>
+                </div>
+                <button onclick="dismissAlert()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Metric Cards Grid (2x2) -->
+        <section class="grid grid-cols-2 gap-3">
+            <div class="bg-gradient-to-br from-purple-600 to-indigo-600 text-white p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <i data-lucide="calendar" class="w-5 h-5 text-purple-200"></i>
+                    <span class="text-[10px] font-medium opacity-80">Pada Semester Ini</span>
+                </div>
+                <div class="mt-3">
+                    <h3 id="stat-hari" class="text-2xl font-black">--</h3>
+                    <p class="text-[11px] font-semibold text-purple-200">Total Hari Efektif</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <i data-lucide="user-x" class="w-5 h-5 text-amber-200"></i>
+                    <span class="text-[10px] font-medium opacity-80">Pada Semester Ini</span>
+                </div>
+                <div class="mt-3">
+                    <h3 id="stat-alpha" class="text-2xl font-black">--</h3>
+                    <p class="text-[11px] font-semibold text-amber-100">Alpha / Tanpa Ket</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-emerald-200"></i>
+                    <span class="text-[10px] font-medium opacity-80">Pada Bulan Ini</span>
+                </div>
+                <div class="mt-3">
+                    <h3 id="stat-kehadiran" class="text-2xl font-black">--</h3>
+                    <p class="text-[11px] font-semibold text-emerald-100">Kehadiran</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-pink-500 to-rose-600 text-white p-3.5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <i data-lucide="users" class="w-5 h-5 text-pink-200"></i>
+                    <span class="text-[10px] font-medium opacity-80">Pada Semester Ini</span>
+                </div>
+                <div class="mt-3">
+                    <h3 id="stat-guru" class="text-2xl font-black">--</h3>
+                    <p class="text-[11px] font-semibold text-pink-100">Guru Aktif</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Attendance Table Card -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="bg-amber-100 text-amber-700 p-1.5 rounded-xl">
+                        <i data-lucide="user-check" class="w-4 h-4"></i>
+                    </div>
+                    <h2 class="font-bold text-slate-800 text-sm">Riwayat Kehadiran</h2>
+                </div>
+                <button onclick="clearLogs()" class="text-[11px] font-medium text-slate-400 hover:text-rose-600">Hapus</button>
+            </div>
+
+            <div class="overflow-x-auto no-scrollbar">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-100 font-bold text-[10px] uppercase tracking-wider">
+                            <th class="pb-2">NAMA</th>
+                            <th class="pb-2">KELAS</th>
+                            <th class="pb-2 text-center">STATUS</th>
+                            <th class="pb-2 text-right">TANGGAL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+
+                <div id="empty-state" class="py-8 flex flex-col items-center justify-center text-slate-400 text-center">
+                    <i data-lucide="clipboard-list" class="w-8 h-8 mb-1 text-slate-300"></i>
+                    <p class="text-xs font-semibold text-slate-500">Belum Ada Presensi Hari Ini</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Access Admin Cards -->
+        <section>
+            <h3 class="font-bold text-slate-700 text-xs mb-2.5 flex items-center gap-1.5">
+                <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-500"></i> Akses Cepat Admin
+            </h3>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="openManualInputModal()" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white p-3.5 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-transform">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="keyboard" class="w-4 h-4"></i>
+                    </div>
+                    <span class="text-xs font-bold">Input NIS Manual</span>
+                </button>
+
+                <button onclick="openSettingsModal()" class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3.5 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center gap-2 active:scale-95 transition-transform">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                    </div>
+                    <span class="text-xs font-bold">Pengaturan API</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modals -->
+    <div id="scanner-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden p-5 flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                    <i data-lucide="camera" class="w-4 h-4 text-indigo-600"></i> Pemindai QR Siswa
+                </h3>
+                <button onclick="closeScannerModal()" class="text-slate-400 hover:text-slate-600 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div class="relative bg-slate-950 rounded-2xl overflow-hidden min-h-[260px] flex items-center justify-center border border-slate-800">
+                <div id="reader" class="w-full"></div>
+                <div id="cooldown-overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-3 transition-opacity duration-200 hidden">
+                    <i data-lucide="loader" class="w-8 h-8 text-amber-400 animate-spin"></i>
+                    <span class="text-xs font-semibold tracking-wide">Memproses Presensi...</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="switchCamera()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Ganti Kamera
+                </button>
+                <button onclick="closeScannerModal()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-xl text-xs">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="manual-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xs w-full p-5 space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm">Input NIS Manual</h3>
+                <button onclick="closeManualInputModal()" class="text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form onsubmit="handleManualSubmit(event)" class="space-y-3">
+                <input type="text" id="manual-input" placeholder="Masukkan ID / NIS Siswa..." required class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-xs shadow-sm">Kirim Absen</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xs w-full p-5 space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm">Pengaturan Web App API</h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-600">URL Apps Script</label>
+                <input type="url" id="api-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 outline-none font-mono">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeSettingsModal()" class="px-3 py-1.5 text-xs text-slate-600">Batal</button>
+                <button onclick="saveSettings()" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-xl">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/80 z-40 shadow-lg">
+        <div class="max-w-md mx-auto px-4 h-16 flex justify-between items-center relative">
+            <button class="flex flex-col items-center gap-1 text-indigo-600 w-12"><i data-lucide="home" class="w-5 h-5"></i><span class="text-[10px] font-semibold">Home</span></button>
+            <button class="flex flex-col items-center gap-1 text-slate-400 w-12"><i data-lucide="book-open" class="w-5 h-5"></i><span class="text-[10px] font-medium">Kelas</span></button>
+
+            <div class="absolute left-1/2 -translate-x-1/2 -top-5">
+                <button onclick="openScannerModal()" class="w-14 h-14 bg-[#0A2540] text-white rounded-full flex flex-col items-center justify-center shadow-lg hover:scale-105 border-4 border-slate-100">
+                    <i data-lucide="qr-code" class="w-6 h-6"></i>
+                </button>
+                <span class="text-[10px] font-bold text-slate-700 block text-center mt-0.5">Scan QR</span>
+            </div>
+
+            <button class="flex flex-col items-center gap-1 text-slate-400 w-12"><i data-lucide="users" class="w-5 h-5"></i><span class="text-[10px] font-medium">Siswa</span></button>
+            <button class="flex flex-col items-center gap-1 text-slate-400 w-12"><i data-lucide="file-text" class="w-5 h-5"></i><span class="text-[10px] font-medium">Laporan</span></button>
+        </div>
+    </nav>
+
+    <!-- JS Logic -->
+    <script>
+        let html5QrcodeScanner = null;
+        let isScanning = false;
+        let isProcessing = false;
+        let availableCameras = [];
+        let currentCameraIndex = 0;
+        const COOLDOWN_TIME = 2000;
+
+        const MOCK_DATABASE = {
+            "SIS-2165": { nama: "AINAYYA FATHIYATURAHMA", kelas: "1-A" },
+            "SIS-2166": { nama: "AFIKA SETIANI", kelas: "1-A" },
+            "SIS-2167": { nama: "ZILVI SRI RAHAYU", kelas: "1-A" }
+        };
+
+        let appConfig = {
+            apiUrl: localStorage.getItem('absensi_api_url') || '',
+            demoMode: localStorage.getItem('absensi_demo_mode') !== 'false'
+        };
+
+        let scanLogs = JSON.parse(localStorage.getItem('absensi_logs') || '[]');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            document.getElementById('api-url-input').value = appConfig.apiUrl;
+            updateAvatarUI();
+            renderLogsTable();
+            loadDashboardData();
+        });
+
+        function updateAvatarUI() {
+            const avatar = document.getElementById('mode-avatar');
+            if (appConfig.demoMode) {
+                avatar.textContent = "D";
+                avatar.className = "w-8 h-8 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center border-2 border-white shadow-sm cursor-pointer transition-all active:scale-95";
+                avatar.title = "Mode Demo Aktif (Huruf D). Klik untuk pindah ke Live API.";
+            } else {
+                avatar.textContent = "L";
+                avatar.className = "w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-sm flex items-center justify-center border-2 border-white shadow-sm cursor-pointer transition-all active:scale-95";
+                avatar.title = "Mode Live API Aktif (Huruf L). Klik untuk pindah ke Demo.";
+            }
+        }
+
+        function toggleDemoMode() {
+            appConfig.demoMode = !appConfig.demoMode;
+            localStorage.setItem('absensi_demo_mode', appConfig.demoMode);
+            updateAvatarUI();
+            if (appConfig.demoMode) {
+                alert("Mode diubah ke: DEMO (Menggunakan data simulasi)");
+            } else {
+                alert("Mode diubah ke: LIVE API (Mengambil data real Google Sheets)");
+            }
+            loadDashboardData();
+        }
+
+        async function loadDashboardData() {
+            if (appConfig.demoMode) {
+                document.getElementById('stat-hari').textContent = "11";
+                document.getElementById('stat-alpha').textContent = "0";
+                document.getElementById('stat-kehadiran').textContent = "83%";
+                document.getElementById('stat-guru').textContent = "6";
+                return;
+            }
+
+            if (!appConfig.apiUrl) {
+                document.getElementById('stat-hari').textContent = "--";
+                document.getElementById('stat-alpha').textContent = "--";
+                document.getElementById('stat-kehadiran').textContent = "--";
+                document.getElementById('stat-guru').textContent = "--";
+                return;
+            }
+
+            try {
+                const response = await fetch(appConfig.apiUrl);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('stat-hari').textContent = data.total_hari;
+                    document.getElementById('stat-alpha').textContent = data.alpha;
+                    document.getElementById('stat-kehadiran').textContent = data.kehadiran;
+                    document.getElementById('stat-guru').textContent = data.total_guru;
+                }
+            } catch (err) {
+                console.error("Gagal memuat statistik:", err);
+            }
+        }
+
+        async function openScannerModal() {
+            document.getElementById('scanner-modal').classList.remove('hidden');
+            await startScanner();
+        }
+
+        async function closeScannerModal() {
+            await stopScanner();
+            document.getElementById('scanner-modal').classList.add('hidden');
+        }
+
+        async function startScanner() {
+            if (isScanning) return;
+            try {
+                availableCameras = await Html5Qrcode.getCameras();
+                if (!availableCameras || availableCameras.length === 0) {
+                    alert("Kamera tidak ditemukan!");
+                    return;
+                }
+
+                currentCameraIndex = availableCameras.findIndex(cam => 
+                    cam.label.toLowerCase().includes('back') || cam.label.toLowerCase().includes('rear')
+                );
+                if (currentCameraIndex === -1) currentCameraIndex = 0;
+
+                html5QrcodeScanner = new Html5Qrcode("reader");
+                await html5QrcodeScanner.start(
+                    availableCameras[currentCameraIndex].id,
+                    { fps: 10, qrbox: { width: 200, height: 200 } },
+                    onScanSuccess,
+                    () => {}
+                );
+                isScanning = true;
+            } catch (err) {
+                alert("Gagal membuka kamera.");
+            }
+        }
+
+        async function stopScanner() {
+            if (html5QrcodeScanner && isScanning) {
+                await html5QrcodeScanner.stop();
+                html5QrcodeScanner.clear();
+                isScanning = false;
+            }
+        }
+
+        async function switchCamera() {
+            if (availableCameras.length <= 1) return;
+            await stopScanner();
+            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+            await startScanner();
+        }
+
+        function onScanSuccess(decodedText) {
+            if (isProcessing) return;
+            processStudentCode(decodedText.trim());
+        }
+
+        async function processStudentCode(studentId) {
+            if (!studentId || isProcessing) return;
+
+            isProcessing = true;
+            document.getElementById('cooldown-overlay').classList.remove('hidden');
+
+            const now = new Date();
+            const timeStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
+
+            let result = null;
+
+            if (appConfig.demoMode) {
+                await new Promise(r => setTimeout(r, 600));
+                if (MOCK_DATABASE[studentId]) {
+                    const student = MOCK_DATABASE[studentId];
+                    result = { status: 'success', title: 'Absensi Berhasil!', message: 'Presensi dicatat.', student: { id: studentId, nama: student.nama, kelas: student.kelas } };
+                } else {
+                    result = { status: 'error', title: 'Gagal Absen', message: 'ID Siswa tidak terdaftar.', student: { id: studentId, nama: '-', kelas: '-' } };
+                }
+            } else {
+                if (!appConfig.apiUrl) {
+                    alert("URL API belum diset.");
+                    endCooldown();
+                    return;
+                }
+                try {
+                    const response = await fetch(appConfig.apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({ action: 'absensi', student_id: studentId, timestamp: now.toISOString() })
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        result = { status: 'success', title: 'Absensi Berhasil!', message: data.message, student: { id: studentId, nama: data.nama, kelas: data.kelas } };
+                    } else {
+                        result = { status: 'error', title: 'Gagal Absen', message: data.message, student: { id: studentId, nama: '-', kelas: '-' } };
+                    }
+                } catch (e) {
+                    result = { status: 'error', title: 'Koneksi Gagal', message: 'Gagal terhubung ke Apps Script.', student: { id: studentId, nama: '-', kelas: '-' } };
+                }
+            }
+
+            showFeedback(result.status, result.title, result.message, result.student);
+            if (result.status === 'success') {
+                addLogEntry({ date: timeStr, id: result.student.id, nama: result.student.nama, kelas: result.student.kelas, status: 'Hadir' });
+                closeScannerModal();
+                loadDashboardData();
+            }
+
+            setTimeout(() => { endCooldown(); }, COOLDOWN_TIME);
+        }
+
+        function endCooldown() {
+            isProcessing = false;
+            document.getElementById('cooldown-overlay').classList.add('hidden');
+        }
+
+        function addLogEntry(entry) {
+            scanLogs.unshift(entry);
+            if (scanLogs.length > 20) scanLogs.pop();
+            localStorage.setItem('absensi_logs', JSON.stringify(scanLogs));
+            renderLogsTable();
+        }
+
+        function renderLogsTable() {
+            const tbody = document.getElementById('logs-tbody');
+            const emptyState = document.getElementById('empty-state');
+
+            if (scanLogs.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = scanLogs.map(log => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2 font-bold text-slate-800 text-[11px] uppercase">${log.nama}</td>
+                    <td class="py-2 text-slate-500 text-[11px]">${log.kelas}</td>
+                    <td class="py-2 text-center">
+                        <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-full">${log.status}</span>
+                    </td>
+                    <td class="py-2 text-right text-slate-400 text-[10px]">${log.date}</td>
+                </tr>
+            `).join('');
+        }
+
+        function clearLogs() {
+            if (confirm("Hapus seluruh catatan lokal?")) {
+                scanLogs = [];
+                localStorage.removeItem('absensi_logs');
+                renderLogsTable();
+            }
+        }
+
+        function showFeedback(type, title, message, student) {
+            const alert = document.getElementById('feedback-alert');
+            document.getElementById('feedback-title').textContent = title;
+            document.getElementById('feedback-message').textContent = message;
+            document.getElementById('detail-id').textContent = `NIS: ${student.id}`;
+            document.getElementById('detail-nama').textContent = `Nama: ${student.nama}`;
+            document.getElementById('detail-kelas').textContent = `Kelas: ${student.kelas}`;
+
+            alert.className = `rounded-2xl p-4 border shadow-md ${type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'}`;
+            alert.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function dismissAlert() { document.getElementById('feedback-alert').classList.add('hidden'); }
+        function openManualInputModal() { document.getElementById('manual-modal').classList.remove('hidden'); }
+        function closeManualInputModal() { document.getElementById('manual-modal').classList.add('hidden'); }
+        function openSettingsModal() { document.getElementById('settings-modal').classList.remove('hidden'); }
+        function closeSettingsModal() { document.getElementById('settings-modal').classList.add('hidden'); }
+
+        function handleManualSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('manual-input');
+            if (input.value.trim()) {
+                processStudentCode(input.value.trim());
+                input.value = '';
+                closeManualInputModal();
+            }
+        }
+
+        function saveSettings() {
+            const urlVal = document.getElementById('api-url-input').value.trim();
+            appConfig.apiUrl = urlVal;
+            localStorage.setItem('absensi_api_url', urlVal);
+            closeSettingsModal();
+            loadDashboardData();
+        }
+    </script>
+</body>
+</html>
